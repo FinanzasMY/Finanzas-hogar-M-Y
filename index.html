@@ -384,8 +384,8 @@ nav button.on::before{content:'';position:absolute;top:0;left:50%;transform:tran
 //  1. CONFIGURACIÓN — reemplazar con los valores de su proyecto
 //     Supabase > Project Settings > Data API
 // ════════════════════════════════════════════════════════════
-const SUPABASE_URL  = 'https://bdcvwakbiwgkldrqsjdo.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_n9YV58SpbRTeeT4rrnellg_VS2_J524';
+const SUPABASE_URL  = 'https://TU-PROYECTO.supabase.co';
+const SUPABASE_ANON = 'TU-CLAVE-ANON-PUBLICA';
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const db = createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -403,17 +403,33 @@ const hoy = () => new Date().toISOString().slice(0,10);
 const MES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
              'septiembre','octubre','noviembre','diciembre'];
 
-// una quincena = del 1 al 15, o del 16 al fin de mes
+// La quincena arranca el día que les pagan (15 y 30) y va hasta el
+// día antes del siguiente pago. Así la plata que entra y lo que se
+// gasta con ella quedan en el mismo periodo.
 function quincena(iso){
   const [a,m,d] = iso.split('-').map(Number);
-  const primera = d <= 15;
-  const ult = new Date(a, m, 0).getDate();
   const p = n => String(n).padStart(2,'0');
-  return {
-    ini:  `${a}-${p(m)}-${primera?'01':'16'}`,
-    fin:  `${a}-${p(m)}-${primera?'15':ult}`,
-    nombre: `${primera?'Primera':'Segunda'} quincena de ${MES[m-1]}`
-  };
+  const ultDia = (aa,mm) => new Date(aa, mm, 0).getDate();
+  const corte  = (aa,mm) => Math.min(30, ultDia(aa,mm));  // el pago de fin de mes
+
+  if (d >= 15 && d < corte(a,m)){
+    return { ini:`${a}-${p(m)}-15`,
+             fin:`${a}-${p(m)}-${p(corte(a,m)-1)}`,
+             nombre:`Primera quincena de ${MES[m-1]}` };
+  }
+  if (d >= corte(a,m)){
+    let sm = m + 1, sa = a;
+    if (sm === 13){ sm = 1; sa++; }
+    return { ini:`${a}-${p(m)}-${p(corte(a,m))}`,
+             fin:`${sa}-${p(sm)}-14`,
+             nombre:`Segunda quincena de ${MES[m-1]}` };
+  }
+  // antes del 15: seguimos en la quincena que arrancó a fin del mes pasado
+  let pm = m - 1, pa = a;
+  if (pm === 0){ pm = 12; pa--; }
+  return { ini:`${pa}-${p(pm)}-${p(corte(pa,pm))}`,
+           fin:`${a}-${p(m)}-14`,
+           nombre:`Segunda quincena de ${MES[pm-1]}` };
 }
 const entre = (f,a,b) => f >= a && f <= b;
 const suma  = arr => arr.reduce((t,x)=>t + Number(x.monto), 0);
